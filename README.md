@@ -6,18 +6,20 @@ Portfólio de projetos práticos desenvolvidos durante minha transição de carr
 
 Os projetos têm como objetivo aplicar, em ambientes controlados, conceitos de **monitoramento, análise de logs, detecção, investigação de incidentes e threat hunting**.
 
-## 🎓 Certificações e Formação
+## 🎓 Cursos e Formação
 
-- Cisco CyberOps Associate
-- CCNA — Introduction to Networks
-- Cisco Cyber Threat Management
-- Hacker Ético — Exército Brasileiro (ESCOM-CCOMGEX)
-- Engenharia de Software — UniCesumar
+- CyberOps Associate — Cisco Networking Academy (2026)
+- Ethical Hacker — Cisco Networking Academy (2026)
+- CCNA: Introduction to Networks — Cisco Networking Academy (2025)
+- Cyber Threat Management — Cisco Networking Academy (2025)
+- Network Technician Career Path — Cisco Networking Academy (2025)
+- Hacker Ético (70h) — ESCOM/CCOMGEX, Exército Brasileiro
+- Bacharelado em Engenharia de Software — UniCesumar (2025)
 
 ## 📂 Projetos
 
-| # | Projeto | Descrição | Status |
-|---|---|---|---|
+| #  | Projeto | Descrição | Status |
+|----|---------|-----------|--------|
 | 01 | [SOC Mini-Lab](./01-soc-mini-lab/) | Laboratório com Wazuh, Sysmon e Windows: coleta, detecção e engenharia de regras, com simulação de ataques (Atomic Red Team, Kali) mapeados ao MITRE ATT&CK | ✅ Concluído |
 | 02 | Investigação de Phishing | Análise de e-mails maliciosos: cabeçalhos, URLs, anexos e indicadores de comprometimento | 🔜 Planejado |
 
