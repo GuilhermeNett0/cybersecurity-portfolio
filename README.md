@@ -12,14 +12,13 @@ Os projetos têm como objetivo aplicar, em ambientes controlados, conceitos de *
 - CCNA — Introduction to Networks
 - Cisco Cyber Threat Management
 - Hacker Ético — Exército Brasileiro (ESCOM-CCOMGEX)
-- ISC2 Candidate
 - Engenharia de Software — UniCesumar
 
 ## 📂 Projetos
 
 | # | Projeto | Descrição | Status |
 |---|---|---|---|
-| 01 | [SOC Mini-Lab](./02-soc-mini-lab/) | Laboratório com Wazuh, Sysmon e Windows: coleta, detecção e engenharia de regras, com simulação de ataques (Atomic Red Team, Kali) mapeados ao MITRE ATT&CK | ✅ Concluído |
+| 01 | [SOC Mini-Lab](./01-soc-mini-lab/) | Laboratório com Wazuh, Sysmon e Windows: coleta, detecção e engenharia de regras, com simulação de ataques (Atomic Red Team, Kali) mapeados ao MITRE ATT&CK | ✅ Concluído |
 | 02 | Investigação de Phishing | Análise de e-mails maliciosos: cabeçalhos, URLs, anexos e indicadores de comprometimento | 🔜 Planejado |
 
 ## 🛠️ Tecnologias e Conceitos
