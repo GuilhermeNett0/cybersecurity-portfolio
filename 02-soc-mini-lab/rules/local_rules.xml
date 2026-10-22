@@ -1,0 +1,75 @@
+<!-- Local rules -->
+
+<!-- Modify it at your will. -->
+<!-- Copyright (C) 2015, Wazuh Inc. -->
+
+<!-- Example -->
+<group name="local,syslog,sshd,">
+
+  <!--
+  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2
+  -->
+  <rule id="100001" level="5">
+    <if_sid>5716</if_sid>
+    <srcip>1.1.1.1</srcip>
+    <description>sshd: authentication failed from IP 1.1.1.1.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+</group>
+
+<group name="local,sysmon,windows,discovery,">
+  <rule id="100010" level="8">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)whoami\.exe$</field>
+    <description>Discovery: whoami.exe executed (system owner/user discovery)</description>
+    <group>recon_cmd,</group>
+    <mitre>
+      <id>T1033</id>
+    </mitre>
+  </rule>
+</group>
+
+<group name="local,sysmon,windows,discovery,">
+  <rule id="100011" level="6">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)ipconfig\.exe$</field>
+    <description>Discovery: ipconfig.exe executed (system network configuration discovery)</description>
+    <group>recon_cmd,</group>
+    <mitre>
+      <id>T1016</id>
+    </mitre>
+  </rule>
+
+  <rule id="100012" level="6">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)systeminfo\.exe$</field>
+    <description>Discovery: systeminfo.exe executed (system information discovery)</description>
+    <group>recon_cmd,</group>
+    <mitre>
+      <id>T1082</id>
+    </mitre>
+  </rule>
+</group>
+
+<group name="local,sysmon,windows,tuning,">
+  <rule id="100013" level="0">
+    <if_sid>92213</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)__PSScriptPolicyTest_[a-z0-9]+\.[a-z0-9]+\.ps1$</field>
+    <description>Tuning: PowerShell execution policy self-test file (benign), suppresses 92213</description>
+  </rule>
+</group>
+
+<group name="local,sysmon,windows,correlation,">
+  <rule id="100014" level="12" frequency="4" timeframe="300">
+    <if_matched_group>recon_cmd</if_matched_group>
+    <same_field>win.system.computer</same_field>
+    <description>Correlation: whoami/ipconfig/systeminfo burst on same host within 5 min (possible host reconnaissance)</description>
+    <mitre>
+      <id>T1033</id>
+      <id>T1016</id>
+      <id>T1082</id>
+    </mitre>
+  </rule>
+</group>
