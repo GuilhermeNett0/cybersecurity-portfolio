@@ -21,7 +21,7 @@ Os projetos têm como objetivo aplicar, em ambientes controlados, conceitos de *
 | #  | Projeto | Descrição | Status |
 |----|---------|-----------|--------|
 | 01 | [SOC Mini-Lab](./01-soc-mini-lab/) | Laboratório com Wazuh, Sysmon e Windows: coleta, detecção e engenharia de regras, com simulação de ataques (Atomic Red Team, Kali) mapeados ao MITRE ATT&CK | ✅ Concluído |
-| 02 | Investigação de Phishing | Análise de e-mails maliciosos: cabeçalhos, URLs, anexos e indicadores de comprometimento | 🔜 Planejado |
+| 02 | [Investigação de Phishing](./02-phishing-investigation/) | Análise de e-mails maliciosos: cabeçalhos, URLs, anexos e indicadores de comprometimento | 🚧 Em andamento |
 
 ## 🛠️ Tecnologias e Conceitos
 
