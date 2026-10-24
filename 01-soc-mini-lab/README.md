@@ -11,7 +11,7 @@
 | PowerShell Base64 via WMI | T1059.001 + T1047 | Detectado | 92071 (nv 12) |
 | Cmdlets ofensivos (Mimikatz, PowerView...) | T1059.001 | Bloqueado pelo Defender + alertado | 62123 (nv 12) |
 | Persistência via Run key | T1547.001 | Detectado | 92302 (nv 6) |
-| Dump de LSASS (ProcDump) | T1003.001 | Bloqueado pelo Defender + alertado | 62123 (nv 12) |
+| Dump de LSASS (ProcDump) | T1003.001 | Bloqueado pelo Defender, **sem alerta** no Wazuh (canal quebrado) | — (evidência local do Defender) |
 | SSH brute force (Hydra) | T1110 → T1078 | Detectado em 7 regras encadeadas | 40112 (nv 12) |
 
 **3 achados principais:** lacuna de regra fechada (comandos de reconhecimento sem alerta → 3 regras customizadas), lacuna de coleta diagnosticada (canal do Defender quebrando após reinício forçado, mesmo com agente `Active`) e falso positivo de nível 15 triado e tratado com tuning.
@@ -22,7 +22,7 @@ Laboratório prático de SOC construído do zero, com um endpoint Windows monito
 
 Projeto feito na minha transição de Suporte Técnico de TI (9+ anos) para Cibersegurança, com foco em SOC N1.
 
-**Resultados até aqui**
+**Resultados**
 
 - Pipeline completo funcionando: Sysmon → Wazuh Agent → Manager → Indexer → Dashboard, mais uma VM Kali atacando a rede host-only.
 - Encontrei duas **lacunas de detecção** reais, de naturezas diferentes:
@@ -456,6 +456,8 @@ A regra de maior nível (92041, level 10) não foi a que melhor descreveu o ataq
 
 Latência medida (Sysmon → alerta): ~63 s, usando `systemTime` UTC do evento.
 
+![Discover: alerta 92302 (level 6, T1547.001) para o valor criado na chave Run via reg.exe](screenshots/28-discover-92302-run-key.png)
+
 #### 4. T1003.001: dump de LSASS com ProcDump (bloqueado)
 
 | Campo | Conteúdo |
@@ -464,11 +466,14 @@ Latência medida (Sysmon → alerta): ~63 s, usando `systemTime` UTC do evento.
 | Hipótese (antes do Wazuh) | Defender deve bloquear antes do dump terminar, como no #18 |
 | Resultado | **Prevenção.** `Access is denied` em segundos — mesmo padrão de bloqueio do #18 |
 | Defender | **HackTool:Win32/DumpLsass.E** — assinatura específica para ferramentas de dump de LSASS, diferente do rótulo genérico do Mimikatz no #18, via detecção de `CmdLine` |
-| Wazuh (1ª tentativa) | Nada chegou — canal do Defender quebrado por reinício forçado (ver item 2 acima) |
-| Wazuh (confirmado depois do fix) | **62123, level 12** / **62124, level 3**, mesmo padrão do #18 |
-| Veredito | **Prevenido.** Hipótese confirmada; cobertura do SIEM para esse bloqueio específico foi interrompida por uma falha de infraestrutura já identificada e corrigida |
+| Wazuh | **Não recebido.** O bloqueio aconteceu com o canal do Defender quebrado (reinício forçado, ver item 2) e o evento não foi reenviado depois do fix: o 62123 que aparece após a correção é o EICAR de validação, não o ProcDump |
+| Evidência | Histórico local do Defender (`Get-MpThreat` / `Get-MpThreatDetection`): ThreatID `2147786200`, `HackTool:Win32/DumpLsass.E`, `CmdLine` do `procdump.exe -ma lsass.exe`, `ActionSuccess: True`, 21/10 às 14:08 (Brasília), 11 min antes do EICAR de validação |
+| Veredito | **Prevenido no endpoint, invisível no SIEM.** Hipótese confirmada; lacuna de coleta no Wazuh para este evento |
+| Ação recomendada | Tratar como tentativa de credential dumping mesmo bloqueada: identificar quem executou e de onde veio o `procdump.exe`, procurar o mesmo binário em outros hosts e corrigir a coleta do canal do Defender |
 
-Esse caso amarra as duas lições do dia: o Defender identificou a ferramenta corretamente (`HackTool:Win32/DumpLsass.E`, mais específico que o rótulo genérico do #18), mas o Wazuh só viu o bloqueio depois que o canal foi restaurado — mesma causa raiz do item 2, agora com remédio padronizado (restart do agente + checagem pós-boot).
+![Get-MpThreat e Get-MpThreatDetection: HackTool:Win32/DumpLsass.E bloqueado, CmdLine do ProcDump contra o lsass.exe, ActionSuccess True](screenshots/29-defender-local-dumplsass-procdump.png)
+
+Esse caso amarra as duas lições do dia: o Defender identificou a ferramenta corretamente (`HackTool:Win32/DumpLsass.E`, mais específico que o rótulo genérico do #18), mas o Wazuh **nunca recebeu** esse bloqueio. Revisando o histórico local do Defender, encontrei 8 detecções durante o lab contra 3 alertas 62123 no Wazuh; as que faltam coincidem com os períodos em que o canal estava quebrado. Prevenção sem alerta continua sendo evidência, mas ela fica no endpoint: o SIEM só sabe o que a coleta entrega.
 
 #### 5. T1110: SSH Brute Force — detecção em camadas (ruleset padrão)
 
@@ -485,6 +490,21 @@ Esse caso amarra as duas lições do dia: o Defender identificou a ferramenta co
 
 Detalhe do alerta final (40112): `data.dstuser: testattack`, `data.srcip: 192.168.56.103`, `rule.mitre.id: T1078, T1110` (Brute Force **e** Valid Accounts — após adivinhar a senha, o atacante tem credencial válida), 5 táticas MITRE envolvidas (Defense Evasion, Persistence, Privilege Escalation, Initial Access, Credential Access), `rule.frequency: 2` (regra de correlação, mesmo princípio da nossa 100014). O Manager também é monitorado como agente de si mesmo (`agent.id: 000`), via `<localfile>` do próprio `auth.log`.
 
+**Coleta duplicada no Manager.** Os 2 hits do 40112 têm o mesmo `full_log` (`sshd[7580]`, porta 55422): é **um** login analisado duas vezes, porque o Manager lê o SSH por duas fontes, o `<localfile>` do `/var/log/auth.log` e o `journald`. A contagem por fonte, feita com uma agregação direto no Indexer filtrando `data.srcip: 192.168.56.103`, mostra que a duplicação atinge a cadeia inteira:
+
+| Regra | `journald` | `/var/log/auth.log` | Total no índice |
+|---|---|---|---|
+| 5760 (auth failed) | 10 | 4 | 14 |
+| 5503 (PAM login failed) | 2 | 2 | 4 |
+| 5758 (MaxAuthTries) | 1 | 1 | 2 |
+| 2502 (missed password) | 1 | 1 | 2 |
+| 40112 (falhas + sucesso) | 1 | 1 | 2 |
+| 5763 (brute force) | 1 | 0 | 1 |
+
+Três leituras: (1) o `journald` registrou **10** falhas, exatamente as 10 senhas erradas da wordlist, enquanto o `auth.log` gerou só 4 alertas 5760 porque o syslog comprime linhas repetidas, o efeito do `message repeated N times` citado abaixo, agora medido; (2) a 5763, regra de correlação por frequência, só disparou no fluxo do `journald`, o único com todas as linhas; (3) sem deduplicar, um único ataque vira 25 alertas no índice. A 2501 não aparece na agregação, provavelmente porque esse alerta não traz `srcip`. Em produção, a correção seria manter uma só fonte para o SSH; no lab, mantive a configuração e documentei.
+
+![Discover: 2 alertas 40112 (level 12) no mesmo instante, um único login do testattack a partir de 192.168.56.103, coletado via auth.log e via journald](screenshots/27-discover-40112-ssh-brute-force.png)
+
 Observações adicionais: o `message repeated N times` do syslog comprime linhas repetidas, então contar tentativas manualmente por linha de log pode subestimar o total. A conta real (`wazuh-admin`) nunca foi atacada — usei uma conta descartável como boa prática de lab. Este foi o caso mais rico do lab: 7 regras padrão cobrindo o mesmo ataque em camadas, sem precisar de regra customizada.
 
 ## Mapeamento MITRE ATT&CK
@@ -499,7 +519,7 @@ Observações adicionais: o `message repeated N times` do syslog comprime linhas
 | Ingress Tool Transfer | T1105 | Sysmon 11 (file create) | 92213 | Falso positivo tratado com tuning (100013) |
 | Windows Management Instrumentation | T1047 | Sysmon 1 (processo pai `WmiPrvSE.exe`) | 92071 (exercitada junto com T1059.001 #15) | Detectada |
 | Persistence: Registry Run Keys | T1547.001 | Sysmon 13 (registry value set), Sysmon 1, Security 4688 | 92302, 92041, 92052 | Detectada |
-| OS Credential Dumping: LSASS Memory | T1003.001 | Defender 1116/1117 (HackTool:Win32/DumpLsass.E) | 62123, 62124 | Prevenida; lacuna de coleta identificada e corrigida (canal do Defender) |
+| OS Credential Dumping: LSASS Memory | T1003.001 | Defender 1116 (HackTool:Win32/DumpLsass.E), histórico local | — (não chegou ao Wazuh) | Prevenida no endpoint; lacuna de coleta (canal do Defender quebrado), evidência via `Get-MpThreatDetection` |
 | Brute Force | T1110 | `auth.log` (sshd, PAM) | 5760, 5763, 5503, 2501, 2502, 5758, 40112 | Detectada em camadas |
 | Valid Accounts | T1078 | `auth.log` (`Accepted password`) | 40112 (mapeamento duplo com T1110) | Detectada |
 | Impair Defenses (exclusão do Defender) | T1562.001 | Defender 5007 (config alterada) | sem regra específica na época | Identificada; não alertada por falha de coleta na época |
